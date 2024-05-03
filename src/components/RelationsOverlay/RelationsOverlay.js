@@ -152,7 +152,7 @@ const RelationItemObserver = observer(({ relation, startNode, endNode, visible, 
 
       if (render !== nodesExist) {
         setRender(nodesExist);
-      } else if(render === false) {
+      } else if (render === false) {
         timer = setTimeout(watchRegionAppear, 30);
       }
     };
@@ -164,13 +164,14 @@ const RelationItemObserver = observer(({ relation, startNode, endNode, visible, 
 
   const visibility = visible && relation.visible;
 
-  return render ? (
+  return (render && relation.shouldRender) ? (
     <RelationItem
       id={relation.id}
       startNode={startNode}
       endNode={endNode}
       direction={relation.direction}
       visible={visibility}
+      labels={relation.selectedValues}
       {...rest}
     />
   ) : null;
@@ -229,7 +230,6 @@ class RelationsOverlay extends PureComponent {
           rootRef={this.rootNode}
           startNode={relation.node1}
           endNode={relation.node2}
-          labels={relation.relations?.selectedValues()}
           dimm={hasHighlight && !highlighted}
           highlight={highlighted}
           visible={highlighted || visible}

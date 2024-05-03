@@ -1,5 +1,6 @@
 import insertAfter from 'insert-after';
 import * as Checkers from './utilities';
+import sanitizeHTML from 'sanitize-html';
 import Canvas from './canvas';
 
 // fast way to change labels visibility for all text regions
@@ -92,7 +93,16 @@ function getNextNode(node) {
   }
 }
 
-function getNodesInRange(range) {
+export function isValidTreeNode(node, commonAncestor) {
+  while (node) {
+    if (commonAncestor && node === commonAncestor) return true;
+    if (node.nodeType === Node.ELEMENT_NODE && node.dataset.skipNode === 'true') return false;
+    node = node.parentNode;
+  }
+  return true;
+}
+
+export function getNodesInRange(range) {
   const start = range.startContainer;
   const end = range.endContainer;
   const commonAncestor = range.commonAncestorContainer;
@@ -101,18 +111,22 @@ function getNodesInRange(range) {
 
   // walk parent nodes from start to common ancestor
   for (node = start.parentNode; node; node = node.parentNode) {
-    nodes.push(node);
+    if (isValidTreeNode(node, commonAncestor)) nodes.push(node);
     if (node === commonAncestor) break;
   }
   nodes.reverse();
 
   // walk children and siblings from start until end is found
   for (node = start; node; node = getNextNode(node)) {
-    nodes.push(node);
+    if (isValidTreeNode(node, commonAncestor)) nodes.push(node);
     if (node === end) break;
   }
 
   return nodes;
+}
+
+export function getTextNodesInRange(range) {
+  return getNodesInRange(range).filter(n => isTextNode(n));
 }
 
 function documentReverse(node) {
@@ -192,8 +206,7 @@ function highlightRange(normedRange, cssClass, cssStyle) {
     cssClass = 'htx-annotation';
   }
 
-  const allNodes = getNodesInRange(normedRange._range);
-  const textNodes = allNodes.filter(n => isTextNode(n));
+  const textNodes = getTextNodesInRange(normedRange._range);
 
   const white = /^\s*$/;
 
@@ -233,7 +246,7 @@ function highlightRange(normedRange, cssClass, cssStyle) {
  * @param {Range} range
  */
 function splitBoundaries(range) {
-  let { startContainer, endContainer  } = range;
+  let { startContainer, endContainer } = range;
   const { startOffset, endOffset } = range;
 
   if (isTextNode(endContainer)) {
@@ -371,7 +384,7 @@ function moveStylesBetweenHeadTags(srcHead, destHead) {
   const rulesByStyleId = {};
   const fragment = document.createDocumentFragment();
 
-  for (let i = 0; i < srcHead.children.length; ) {
+  for (let i = 0; i < srcHead.children.length;) {
     const style = srcHead.children[i];
 
     if (style?.tagName !== 'STYLE') {
@@ -487,7 +500,7 @@ export const htmlEscape = string => {
 };
 
 function findNodeAt(context, at) {
-  for (let node = context.firstChild, l = 0; node; ) {
+  for (let node = context.firstChild, l = 0; node;) {
     if (node.textContent.length + l >= at)
       if (!node.firstChild) return [node, at - l];
       else node = node.firstChild;
@@ -496,6 +509,67 @@ function findNodeAt(context, at) {
       node = node.nextSibling;
     }
   }
+}
+
+/**
+ * Sanitize html from scripts and iframes
+ * @param {string} html
+ * @returns {string}
+ */
+function sanitizeHtml(html = []) {
+  if (!html) return '';
+
+  const disallowedAttributes = ['onauxclick', 'onafterprint', 'onbeforematch', 'onbeforeprint',
+    'onbeforeunload', 'onbeforetoggle', 'onblur', 'oncancel',
+    'oncanplay', 'oncanplaythrough', 'onchange', 'onclick', 'onclose',
+    'oncontextlost', 'oncontextmenu', 'oncontextrestored', 'oncopy',
+    'oncuechange', 'oncut', 'ondblclick', 'ondrag', 'ondragend',
+    'ondragenter', 'ondragleave', 'ondragover', 'ondragstart',
+    'ondrop', 'ondurationchange', 'onemptied', 'onended',
+    'onerror', 'onfocus', 'onformdata', 'onhashchange', 'oninput',
+    'oninvalid', 'onkeydown', 'onkeypress', 'onkeyup',
+    'onlanguagechange', 'onload', 'onloadeddata', 'onloadedmetadata',
+    'onloadstart', 'onmessage', 'onmessageerror', 'onmousedown',
+    'onmouseenter', 'onmouseleave', 'onmousemove', 'onmouseout',
+    'onmouseover', 'onmouseup', 'onoffline', 'ononline', 'onpagehide',
+    'onpageshow', 'onpaste', 'onpause', 'onplay', 'onplaying',
+    'onpopstate', 'onprogress', 'onratechange', 'onreset', 'onresize',
+    'onrejectionhandled', 'onscroll', 'onscrollend',
+    'onsecuritypolicyviolation', 'onseeked', 'onseeking', 'onselect',
+    'onslotchange', 'onstalled', 'onstorage', 'onsubmit', 'onsuspend',
+    'ontimeupdate', 'ontoggle', 'onunhandledrejection', 'onunload',
+    'onvolumechange', 'onwaiting', 'onwheel'];
+
+  const disallowedTags = {
+    'script': true,
+    'iframe': true,
+  };
+
+  return sanitizeHTML(html, {
+    allowedTags: false,
+    allowedAttributes: false,
+    disallowedTagsMode: 'discard',
+    allowVulnerableTags: true,
+    exclusiveFilter(frame) {
+      //...except those in the blacklist
+      return disallowedTags[frame.tag];
+    },
+    nonTextTags: ['script', 'textarea', 'option', 'noscript'],
+    transformTags: {
+      '*': (tagName, attribs) => {
+        Object.keys(attribs).forEach(attr => {
+          // If the attribute is in the disallowed list, remove it
+          if (disallowedAttributes.includes(attr)) {
+            delete attribs[attr];
+          }
+        });
+        return {
+          tagName,
+          attribs,
+        };
+      },
+    },
+  });
 }
 
 export {
@@ -507,6 +581,7 @@ export {
   findIdxContainer,
   toGlobalOffset,
   highlightRange,
+  sanitizeHtml,
   splitBoundaries,
   normalizeBoundaries,
   createClass,

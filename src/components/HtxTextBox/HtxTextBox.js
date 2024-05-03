@@ -85,8 +85,7 @@ export class HtxTextBox extends React.Component {
   };
 
   updateHeight = throttle(() => {
-    const borders = 2;
-    const height = (this.inputRef.current?.scrollHeight || 0) + borders;
+    const height = this.inputRef.current?.scrollHeight || 0;
 
     if (height && height !== this.state.height) {
       this.setState({ height });
@@ -94,7 +93,22 @@ export class HtxTextBox extends React.Component {
   }, 100);
 
   renderEdit() {
-    const { className = '', rows = 1, onlyEdit, name, onFocus, onChange, ...props } = this.props;
+    const {
+      className = '',
+      rows = 1,
+      onlyEdit,
+      name,
+      onFocus,
+      onChange,
+
+      // don't pass non-DOM props to Paragraph
+      onDelete: _,
+      isEditable: __,
+      isDeleteable: ___,
+      ignoreShortcuts: ____,
+
+      ...props
+    } = this.props;
     const { height, value } = this.state;
 
     const inputProps = {
@@ -104,7 +118,7 @@ export class HtxTextBox extends React.Component {
       autoFocus: true,
       ref: this.inputRef,
       value,
-      onBlur: isFF(FF_DEV_1566) ? ()=>{
+      onBlur: isFF(FF_DEV_1566) ? () => {
         onChange(this.state.value);
       } : this.save,
       onFocus,
@@ -145,15 +159,27 @@ export class HtxTextBox extends React.Component {
   }
 
   renderView() {
-    const { onChange, onDelete, isEditable, isDeleteable, text, ...props } = this.props;
+    const {
+      onChange,
+      onDelete,
+      isEditable,
+      isDeleteable,
+      text,
+
+      // don't pass non-DOM props to Paragraph
+      ignoreShortcuts: _,
+      onlyEdit: __,
+
+      ...props
+    } = this.props;
 
     return (
       <>
         <Paragraph {...props}>
           <span ref={this.textRef}>{text}</span>
-          {isEditable && onChange && <EditOutlined onClick={this.startEditing} className="ant-typography-edit" />}
+          {isEditable && onChange && <EditOutlined onClick={this.startEditing} aria-label="Edit Region" className="ant-typography-edit" />}
         </Paragraph>
-        {isDeleteable && onDelete && <DeleteOutlined className={styles.delete} onClick={onDelete} />}
+        {isDeleteable && onDelete && <DeleteOutlined className={styles.delete} aria-label="Delete Region" onClick={onDelete} />}
       </>
     );
   }

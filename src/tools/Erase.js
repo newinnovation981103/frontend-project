@@ -55,6 +55,7 @@ const _Tool = types
   })
   .volatile(() => ({
     index: 9999,
+    canInteractWithRegions: false,
   }))
   .views(self => ({
     get viewClass() {
@@ -96,7 +97,7 @@ const _Tool = types
 
     return {
       updateCursor() {
-        if (!self.selected || !self.obj.stageRef) return;
+        if (!self.selected || !self.obj?.stageRef) return;
         const val = 24;
         const stage = self.obj.stageRef;
         const base64 = Canvas.brushSizeCircle(val);
@@ -123,7 +124,7 @@ const _Tool = types
         brush.endPath();
       },
 
-      mousemoveEv(ev, [x, y]) {
+      mousemoveEv(ev, _, [x, y]) {
         if (self.mode !== 'drawing') return;
         if (
           !findClosestParent(
@@ -139,7 +140,7 @@ const _Tool = types
         }
       },
 
-      mousedownEv(ev, [x, y]) {
+      mousedownEv(ev, _, [x, y]) {
         if (
           !findClosestParent(
             ev.target,
