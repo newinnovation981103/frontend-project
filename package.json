@@ -125,7 +125,7 @@
     "@types/strman": "^2.0.0",
     "@types/wavesurfer.js": "^6.0.0",
     "@wojtekmaj/enzyme-adapter-react-17": "^0.4.1",
-    "antd": "^4.3.3",
+    "antd": "^5.17.0",
     "array-move": "^1.0.0",
     "autoprefixer": "^10.4.2",
     "babel-jest": "^29.3.1",
