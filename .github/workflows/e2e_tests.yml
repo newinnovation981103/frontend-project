@@ -54,7 +54,7 @@ jobs:
         run: du -d 0 -h ${{ steps.yarn-cache-dir-path.outputs.dir }}
 
       - name: "Download bundle"
-        uses: actions/download-artifact@v3
+        uses: actions/download-artifact@v4
         with:
           name: LSF-coverage-${{ inputs.sha }}
 
